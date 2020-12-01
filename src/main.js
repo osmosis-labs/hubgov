@@ -120,23 +120,6 @@ window.onload = async () => {
     // If you don't request enabling before usage, there is no guarantee that other methods will work.
     await window.keplr.enable(chainId);
 
-    const offlineSigner = window.getOfflineSigner(chainId);
-
-    // You can get the address/public keys by `getAccounts` method.
-    // It can return the array of address/public key.
-    // But, currently, Keplr extension manages only one address/public key pair.
-    // XXX: This line is needed to set the sender address for SigningCosmosClient.
-    const accounts = await offlineSigner.getAccounts();
-
-    // Initialize the gaia api with the offline signer that is injected by Keplr extension.
-    const cosmJS = new SigningCosmosClient(
-        "https://node-cosmoshub-3.keplr.app/rest",
-        accounts[0].address,
-        offlineSigner,
-    );
-
-    // document.getElementById("address").append(accounts[0].address);
-
     const apiUrl = "https://node-cosmoshub-3.keplr.app/rest";
 
     const client = LcdClient.withExtensions(
@@ -170,9 +153,6 @@ document.sendForm.onsubmit = () => {
     let props = $("#prop").val();
     let option = $("#option").val();
 
-    console.log(props);
-    console.log(option);
-
     (async () => {
         // See above.
         const chainId = "cosmoshub-3";
@@ -181,19 +161,11 @@ document.sendForm.onsubmit = () => {
 
         const accounts = await offlineSigner.getAccounts();
 
-
-        const apiUrl = "https://node-cosmoshub-3.keplr.app/rest";
-
-        const client = LcdClient.withExtensions(
-            { apiUrl },
-            setupGovExtension,
-        );
-
         // Initialize the gaia api with the offline signer that is injected by Keplr extension.
         const cosmJS = new SigningCosmosClient(
             "https://node-cosmoshub-3.keplr.app/rest",
             accounts[0].address,
-            offlineSigner
+            offlineSigner,
         );
 
         var voteMsgs = [];
@@ -202,23 +174,25 @@ document.sendForm.onsubmit = () => {
             voteMsgs.push({
                 type: "cosmos-sdk/MsgVote",
                 value: {
-                    proposal_id: parseInt(prop),
+                    proposal_id: prop,
                     voter: cosmJS.senderAddress,
                     option: option,
                 },
             })
         }
 
-        console.log(voteMsgs);
-
         const fee = {
             amount: coins(0, "uatom"),
-            gas: "4000000",
+            gas: "400000",
         };
+
+        $("#loader").show();
 
         const result = await cosmJS.signAndBroadcast(voteMsgs, fee, "");
 
-        console.log(result);
+        $("#loader").hide();
+
+        console.log(result); 
 
         if (result.code !== undefined &&
             result.code !== 0) {
